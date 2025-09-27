@@ -19,21 +19,11 @@ class MessageHandler(BaseHandler):
 
     @sponsor_required
     def home(self):
-        """
-        Handles user interactions when the user is at the "home" step.
-
-        - If the user presses "دکمه اول", a message is sent along with an inline keyboard.
-        - If the user presses "دکمه دوم", the user's step is updated to "second_button"
-        and a message is sent with a back button (reply keyboard).
-
-        This method routes the user based on their selected option from the home screen.
-        """
-
-        if self.update.message.text == "دکمه اول":
+        if self.update.message.text == "🛒 خرید اشتراک":
             return self.bot.send_message(
                 chat_id=self.chat_id,
-                text="دکمه اول",
-                reply_markup=self.inline_keyboard.first_keyboard()
+                text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.inline_keyboard.pay_plan_keyboard()
 
             )
         elif self.update.message.text == "دکمه دوم":

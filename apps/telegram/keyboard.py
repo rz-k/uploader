@@ -1,5 +1,7 @@
 import json
 
+from apps.bot.models import Plan
+
 
 class BaseKeyboard:
 
@@ -12,8 +14,8 @@ class ReplyKeyboardMarkup(BaseKeyboard):
     def home_keyboard(self):
         markup = {
             "keyboard": [
-                ["دکمه اول", "دکمه دوم"],
-                ["دکمه سوم", "دکمه چهارم"]
+                ["اطلاعات حساب 👤", "🛒 خرید اشتراک"],
+                ["گیفت اشتراک به دوستان 🎁", "💌 حمایت از مجموعه"]
             ],
             "resize_keyboard":True
         }
@@ -40,22 +42,17 @@ class ReplyKeyboardMarkup(BaseKeyboard):
 
 class InlineKeyboardMarkup(BaseKeyboard):
 
-    def first_keyboard(self):
+    def pay_plan_keyboard(self):
+        plans = Plan.objects.filter(is_active=True)
+        child = []
+        for plan in plans.order_by("pk"):
+            child.append(
+                [{"text": f"{plan.name}", "callback_data": f"pay:{plan.pk}"}]
+            )
         markup = {
-            "inline_keyboard": [
-                [
-                    {"text": "دکمه اول", "callback_data": "first_button"},
-                    {"text": "دکمه دوم", "callback_data": "second_button"}
-                ],
-                [
-                    {"text": "دکمه سوم", "callback_data": "third_button"},
-                    {"text": "دکمه چهارم", "callback_data": "fourth_button"}
-                ]
-            ]
+            "inline_keyboard": child
         }
-        return self.to_json(
-            data=markup
-        )
+        return self.to_json(data=markup)
 
     def remove_keyboard(self):
         markup = {"inline_keyboard": []}
