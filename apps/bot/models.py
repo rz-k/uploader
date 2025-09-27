@@ -35,3 +35,23 @@ class ChannelSponsor(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+class Plan(models.Model):
+    """
+    Subscription or service plan.
+    """
+    name = models.CharField(max_length=100)
+    price_rial = models.PositiveBigIntegerField()
+    duration_days = models.IntegerField(
+        help_text="Number of days for the plan. Use a negative value for unlimited."
+    )
+    is_active = models.BooleanField(default=True)
+
+    def is_unlimited(self) -> bool:
+        """Check if the plan is unlimited."""
+        return self.duration_days < 0
+
+    def __str__(self):
+        if self.is_unlimited():
+            return f"{self.name} - Unlimited"
+        return f"{self.name} - {self.duration_days} days"
