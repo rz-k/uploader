@@ -4,6 +4,7 @@ from apps.telegram.handlers.base_handlers import BaseHandler
 from apps.telegram.telegram import Telegram
 from apps.telegram.telegram_models import Update
 from utils.utils import update_object
+from apps.account.models import User
 
 
 class AdminMessageHandler(BaseHandler):
@@ -18,6 +19,7 @@ class AdminMessageHandler(BaseHandler):
             "admin_upload": self.admin_upload,
             "get_title": self.get_title,
             "get_episode": self.get_episode,
+            "admin_user_info": self.admin_user_info,
         }
 
     def admin_handler(self):
@@ -28,6 +30,31 @@ class AdminMessageHandler(BaseHandler):
             reply_markup=self.reply_keyboard.admin_home_keyboard()
         )
 
+    def admin_user_info(self):
+        if self.update.message.text == "بازگشت":
+            return self.admin_handler()
+        else:
+            try:
+                _user = User.objects.get(user_id=self.text)
+            except Exception:
+                return self.bot.send_message(chat_id=self.chat_id,text="یوزر پیدا نشد",parse_mode="markdown")
+
+            plan_title=_user.subscription_info()
+            last_plan = 1
+            payment_count = 1
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text=self.bot_messages.get_message(
+                    "user_info",
+                    user_id=self.text,
+                    plan_title=plan_title,
+                    last_plan=last_plan,
+                    payment_count=payment_count
+                ),
+                reply_markup=self.reply_keyboard.back_keyboard(),
+                parse_mode="markdown"
+            )
+
     def admin_home(self):
         if self.update.message.text == "اپلود ⬇️":
             update_object(self.user_obj, step="admin_upload")
@@ -36,6 +63,16 @@ class AdminMessageHandler(BaseHandler):
                 text="برای اپلود سریال و یا فیلم تک قسمتی یکی رو انتخاب کن",
                 # text=self.bot_messages.get_message("payment_plan_message"),
                 reply_markup=self.reply_keyboard.admin_upload_keyboard(),
+                parse_mode="markdown"
+            )
+
+        elif self.update.message.text == "اطلاعات کاربر 💹":
+            update_object(self.user_obj, step="admin_user_info")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="لطفا ایدی عددی کاربر مورد نظر رو ارسال کن",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.back_keyboard(),
                 parse_mode="markdown"
             )
 
@@ -89,7 +126,9 @@ class AdminMessageHandler(BaseHandler):
         )
 
     def get_episode(self):
+        _, session_id = self.user_obj.step.split(":")
         if self.update.message.text == "لغو اپلود ❌":
+            Session.objects.get(id=session_id).delete()
             update_object(self.user_obj, step="admin_upload")
             return self.bot.send_message(
                 chat_id=self.chat_id,
@@ -101,7 +140,6 @@ class AdminMessageHandler(BaseHandler):
 
         elif self.update.message.text == "اتمام اپلود ✅":
             update_object(self.user_obj, step="admin_home")
-            _, session_id = self.user_obj.step.split(":")
             session = Session.objects.get(id=session_id)
             epis = ""
             for e in session.episodes.order_by("order"):
