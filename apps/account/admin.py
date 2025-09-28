@@ -28,7 +28,8 @@ class UserAdmin(BaseUserAdmin):
                     "last_name",
                     "username",
                     "step",
-                    "is_send_ads"
+                    "is_send_ads",
+                    "subscription_expires_at"
                 )
             },
         ),
