@@ -1,9 +1,9 @@
+from apps.telegram._types import ReplyParameters
 from apps.telegram.decorator import sponsor_required
 from apps.telegram.handlers.base_handlers import BaseHandler
 from apps.telegram.telegram import Telegram
 from apps.telegram.telegram_models import Update
 from utils.utils import update_object
-from apps.telegram._types import ReplyParameters
 
 
 class CommandHandler(BaseHandler):
@@ -36,6 +36,18 @@ class CommandHandler(BaseHandler):
             )
         )
 
+    def admin_handler(self):
+        update_object(self.user_obj, step="admin_home")
+        return self.bot.send_message(
+            chat_id=self.chat_id,
+            text="Welcome To Admin panel",
+            reply_markup=self.reply_keyboard.admin_home_keyboard(),
+            reply_parameters=ReplyParameters(
+                chat_id=self.chat_id,
+                message_id=self.update.message.message_id
+            )
+        )
+
     def help_handler(self):
         return self.bot.send_message(chat_id=self.chat_id, text="Help Command")
 
@@ -49,5 +61,8 @@ class CommandHandler(BaseHandler):
 
         elif self.update.message.text.startswith("/help"):
             self.help_handler()
+
+        elif self.update.message.text.startswith("/admin") and self.user_obj.is_superuser:
+            self.admin_handler()
 
         print("Command Handlers")

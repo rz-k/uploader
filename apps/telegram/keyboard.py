@@ -23,6 +23,41 @@ class ReplyKeyboardMarkup(BaseKeyboard):
             data=markup
         )
 
+    def admin_home_keyboard(self):
+        markup = {
+            "keyboard": [
+                ["پیام همگانی 📡", "اپلود ⬇️"],
+                ["ویرایش ⚙️", "اطلاعات کاربر 💹"]
+            ],
+            "resize_keyboard":True
+        }
+        return self.to_json(
+            data=markup
+        )
+
+    def admin_upload_keyboard(self):
+        markup = {
+            "keyboard": [
+                ["اپلود سریال ➕", "اپلود فیلم ➕"],
+                ["بازگشت"]
+            ],
+            "resize_keyboard":True
+        }
+        return self.to_json(
+            data=markup
+        )
+
+    def cancel_keyboard(self):
+        markup = {
+            "keyboard": [
+                ["لغو اپلود ❌", "اتمام اپلود ✅"]
+            ],
+            "resize_keyboard":True
+        }
+        return self.to_json(
+            data=markup
+        )
+
     def back_keyboard(self):
         markup = {
             "keyboard": [
@@ -77,8 +112,3 @@ class InlineKeyboardMarkup(BaseKeyboard):
             "inline_keyboard": child
         }
         return self.to_json(data=markup)
-
-    def remove_keyboard(self):
-        markup = {"inline_keyboard": []}
-        return self.to_json(data=markup)
-

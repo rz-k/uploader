@@ -1,9 +1,134 @@
+from apps.bot.models import Session
 from apps.telegram.decorator import sponsor_required
 from apps.telegram.handlers.base_handlers import BaseHandler
 from apps.telegram.telegram import Telegram
 from apps.telegram.telegram_models import Update
 from utils.utils import update_object
 
+
+class AdminMessageHandler(BaseHandler):
+
+    def __init__(self, update: Update, bot: Telegram):
+        super().__init__(update, bot)
+        self.update = update
+        self.bot = bot
+
+        self.steps = {
+            "admin_home": self.admin_home,
+            "admin_upload": self.admin_upload,
+            "get_title": self.get_title,
+            "get_episode": self.get_episode,
+        }
+
+    def admin_handler(self):
+        update_object(self.user_obj, step="admin_home")
+        return self.bot.send_message(
+            chat_id=self.chat_id,
+            text="Welcome To Admin panel",
+            reply_markup=self.reply_keyboard.admin_home_keyboard()
+        )
+
+    def admin_home(self):
+        if self.update.message.text == "اپلود ⬇️":
+            update_object(self.user_obj, step="admin_upload")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="برای اپلود سریال و یا فیلم تک قسمتی یکی رو انتخاب کن",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.admin_upload_keyboard(),
+                parse_mode="markdown"
+            )
+
+    def admin_upload(self):
+        if self.update.message.text == "بازگشت":
+            return self.admin_handler()
+
+        elif self.update.message.text == "اپلود فیلم ➕":
+            update_object(self.user_obj, step="get_title:movie")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="اسم فیلم را ارسال کنید",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.back_keyboard(),
+                parse_mode="markdown"
+            )
+        elif self.update.message.text == "اپلود سریال ➕":
+            update_object(self.user_obj, step="get_title:series")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="اسم سریال را ارسال کنید",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.back_keyboard(),
+                parse_mode="markdown"
+            )
+
+    def get_title(self):
+        if self.update.message.text == "بازگشت":
+            update_object(self.user_obj, step="admin_upload")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="برای اپلود سریال و یا فیلم تک قسمتی یکی رو انتخاب کن",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.admin_upload_keyboard(),
+                parse_mode="markdown"
+            )
+
+        _, content_type = self.user_obj.step.split(":")
+
+        session = Session.objects.create(
+            title=self.text,
+            content_type=content_type,
+        )
+        update_object(self.user_obj, step=f"get_episode:{session.id}")
+        return self.bot.send_message(
+            chat_id=self.chat_id,
+            text="لطفا فایل مورد نظر رو ارسال کن",
+            # text=self.bot_messages.get_message("payment_plan_message"),
+            reply_markup=self.reply_keyboard.cancel_keyboard(),
+            parse_mode="markdown"
+        )
+
+    def get_episode(self):
+        if self.update.message.text == "لغو اپلود ❌":
+            update_object(self.user_obj, step="admin_upload")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="برای اپلود سریال و یا فیلم تک قسمتی یکی رو انتخاب کن",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.admin_upload_keyboard(),
+                parse_mode="markdown"
+            )
+
+        elif self.update.message.text == "اتمام اپلود ✅":
+            update_object(self.user_obj, step="admin_home")
+            _, session_id = self.user_obj.step.split(":")
+            session = Session.objects.get(id=session_id)
+            epis = ""
+            for e in session.episodes.order_by("order"):
+                epis+=f"[E{e.order}]({e.get_link()})\n"
+            text = (
+                f"✅ آپلود با موفقیت انجام شد!\n\n"
+                f"📌 لینک قسمت‌ها:\n{epis}\n"
+                f"📂 لینک کل مجموعه:\n[S{session.title}]({session.get_link()})"
+            )
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text=text,
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.admin_home_keyboard(),
+                parse_mode="markdown"
+            )
+
+    def handle(self):
+        if self.is_update_mode():return  # noqa: E701
+        if self.is_user_block():return  # noqa: E701
+
+        if self.user_step:
+            if callback := self.steps.get(self.user_step): # step : "home"
+                return callback()
+
+            if callback := self.steps.get(self.user_step.split(":")[0]): # step : "home:info"
+                return callback()
 
 class MessageHandler(BaseHandler):
 
@@ -65,3 +190,4 @@ class MessageHandler(BaseHandler):
 
             if callback := self.steps.get(self.user_step.split(":")[0]): # step : "home:info"
                 return callback()
+            AdminMessageHandler(self.update, self.bot).handle()
