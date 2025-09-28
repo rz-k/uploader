@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.bot.models import BotUpdateStatus, ChannelSponsor, Message, Plan
+from apps.bot.models import BotUpdateStatus, ChannelSponsor, Message, Plan, Episode, Session
 
 
 @admin.register(BotUpdateStatus)
@@ -33,3 +33,13 @@ class PlanAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "price_rial", "duration_days", "is_active")
     search_fields = ("name",)
     list_editable = ("name",)
+
+@admin.register(Episode)
+class EpisodeAdmin(admin.ModelAdmin):
+    list_display = ("id", "session", "message_id", "order")
+    search_fields = ("message_id",)
+
+@admin.register(Session)
+class SessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "content_type", "like_count", "view_count")
+    search_fields = ("title",)
