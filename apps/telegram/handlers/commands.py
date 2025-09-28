@@ -1,8 +1,12 @@
+import time
+
+from apps.bot.models import Episode, Session
 from apps.telegram._types import ReplyParameters
 from apps.telegram.decorator import sponsor_required
 from apps.telegram.handlers.base_handlers import BaseHandler
 from apps.telegram.telegram import Telegram
 from apps.telegram.telegram_models import Update
+from utils.load_env import env
 from utils.utils import update_object
 
 
@@ -51,13 +55,58 @@ class CommandHandler(BaseHandler):
     def help_handler(self):
         return self.bot.send_message(chat_id=self.chat_id, text="Help Command")
 
+    def send_file_to_user_handler(self):
+        def send_message(message_id: int):
+            result = self.bot.copy_message(
+                chat_id=self.chat_id,
+                from_chat_id=env.CHANNEL_ID,
+                message_id=message_id
+            )
+            if env.AUTO_DELETE_FILE_SECOND:
+                sleep_second = int(env.AUTO_DELETE_FILE_SECOND)
+                time.sleep(sleep_second)
+                self.bot.delete_message(chat_id=self.chat_id, message_id=result['result']['message_id'])
+            return
+
+        _, link = self.text.split(" ")
+        if link.startswith("S_"):
+            session = Session.objects.prefetch_related("episodes").get(link=link)
+            for e in session.episodes.order_by("order"):
+                self.run_function_in_thread(send_message, e.message_id)
+
+        elif link.startswith("E_"):
+            episode = Episode.objects.get(link=link)
+            self.run_function_in_thread(send_message, episode.message_id)
+        time.sleep(2)
+        if env.AUTO_DELETE_FILE_SECOND:
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text=self.bot_messages.get_message("delete_file_and_save_file", time=env.AUTO_DELETE_FILE_SECOND),
+                reply_parameters=ReplyParameters(
+                    chat_id=self.chat_id,
+                    message_id=self.update.message.message_id
+                )
+            )
+
     def handle(self):
         if self.is_update_mode():return  # noqa: E701
         if self.is_user_block():return  # noqa: E701
 
-
         if self.update.message.text.startswith("/start"):
-            self.start_handler()
+            if self.update.message.text == "/start":
+                self.start_handler()
+
+            elif self.update.message.text.startswith("/start "):
+
+                if self.user_obj.has_active_subscription() or env.FREE_DOWNLOAD:
+                    return self.run_function_in_thread(self.send_file_to_user_handler)
+
+                return self.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=self.bot_messages.get_message("payment_plan_message"),
+                    reply_markup=self.inline_keyboard.pay_plan_keyboard(),
+                    parse_mode="markdown"
+                )
 
         elif self.update.message.text.startswith("/help"):
             self.help_handler()
