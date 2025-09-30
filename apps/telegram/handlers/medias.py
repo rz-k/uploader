@@ -20,11 +20,45 @@ class MediaHandler(BaseHandler):
         _, session_id = self.user_obj.step.split(":")
         session = Session.objects.get(id=session_id)
 
-        result = self.bot.copy_message(
-            chat_id=env.CHANNEL_ID,
-            from_chat_id=self.chat_id,
-            message_id=self.update.message.message_id
-        )
+        original_caption = self.update.message.caption or ""
+        original_entities = self.update.message.caption_entities or []
+        if env.EXTRA_CAPTION:
+            original_caption = original_caption + env.EXTRA_CAPTION.replace("\\n", "\n")
+            result = self.bot.copy_message(
+                chat_id=env.CHANNEL_ID,
+                from_chat_id=self.chat_id,
+                message_id=self.update.message.message_id,
+                caption=original_caption,
+                caption_entities=original_entities
+            )
+        # # جایی که متن اضافه میشه
+        # if env.EXTRA_CAPTION:
+        #     extra_text = env.EXTRA_CAPTION
+        #     # محاسبه offset شروع متن اضافه‌شده
+        #     offset_start = len(original_caption)
+        #     new_caption = original_caption + extra_text
+
+        #     # اگر می‌خوای متن اضافه‌شده هم entity داشته باشه
+        #     # مثلا bold
+        #     extra_entities = [{
+        #         "type": "bold",
+        #         "offset": offset_start,
+        #         "length": len(extra_text),
+        #     }]
+
+        #     # ترکیب entities قبلی و جدید
+        #     entities = original_entities + extra_entities
+        # else:
+        #     new_caption = original_caption
+        #     entities = original_entities
+
+        # result = self.bot.copy_message(
+        #     chat_id=env.CHANNEL_ID,
+        #     from_chat_id=self.chat_id,
+        #     message_id=self.update.message.message_id,
+        #     caption=new_caption,
+        #     caption_entities=entities
+        # )
 
         if result['ok']:
             channel_message_id = result['result']['message_id']

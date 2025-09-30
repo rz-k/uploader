@@ -55,15 +55,31 @@ class Telegram:
         """
         Send HTTP request to Telegram Bot API.
         """
+        def _convert_value(v):
+            if isinstance(v, dict):
+                return json.dumps(v)
+            elif isinstance(v, list):
+                try:
+                    return json.dumps([dict(i) if hasattr(i, "__dict__") or isinstance(i, dict) else i for i in v])
+                except Exception:
+                    return v
+            return v
         url = self.BASE_URL.format(self.token, method_name)
+        # if data:
+        #     for k, v in data.items():
+        #         if isinstance(v, dict):
+        #             data[k] = json.dumps(v)
+        # if params:
+        #     for k, v in data.items():
+        #         if isinstance(v, dict):
+        #             data[k] = json.dumps(v)
         if data:
             for k, v in data.items():
-                if isinstance(v, dict):
-                    data[k] = json.dumps(v)
+                data[k] = _convert_value(v)
+
         if params:
-            for k, v in data.items():
-                if isinstance(v, dict):
-                    data[k] = json.dumps(v)
+            for k, v in params.items():
+                params[k] = _convert_value(v)
         try:
             if method.upper() == "GET":
                 response = self._session.get(
