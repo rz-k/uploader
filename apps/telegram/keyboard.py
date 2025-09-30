@@ -1,6 +1,7 @@
 import json
 
-from apps.bot.models import Plan
+from apps.bot.models import Plan, Session
+from utils.load_env import env
 
 
 class BaseKeyboard:
@@ -110,5 +111,42 @@ class InlineKeyboardMarkup(BaseKeyboard):
             )
         markup = {
             "inline_keyboard": child
+        }
+        return self.to_json(data=markup)
+
+    def edit_session_keyboard(self, session: Session):
+        child = []
+        for episode in session.episodes.order_by("order"):
+            child.append([
+                {"text": f"🎞️ قسمت {episode.order}", "callback_data": "_"},
+                {"text": "🗑️ حذف", "callback_data": f"edit_session:delete_e:{episode.id}"},
+                {"text": "🔗 لینک", "url": f"https://t.me/c/{env.PRIVATE_CHANNEL_ID}/{episode.message_id}"},
+            ])
+
+        if child:
+            child.append(
+                [
+                    {"text": "➕ افزودن پارت جدید", "callback_data": f"edit_session:add_e:{session.id}"}
+                ]
+            )
+            child.append(
+                [
+                    {"text": "❌ حذف کل سشن", "callback_data": f"edit_session:delete_s:{session.id}"}
+                ]
+            )
+
+        markup = {
+            "inline_keyboard": child
+        }
+        return self.to_json(data=markup)
+
+    def sure_delete_object_keyboard(self, object_id, object_type):
+        markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ بله، حذف کن", "callback_data": f"sure_delete_object:yes:{object_type}:{object_id}"},
+                    {"text": "❌ نه، منصرف شدم", "callback_data": f"sure_delete_object:no:{object_type}:{object_id}"},
+                ]
+            ]
         }
         return self.to_json(data=markup)
