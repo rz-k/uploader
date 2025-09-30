@@ -1,10 +1,10 @@
+from apps.account.models import User
 from apps.bot.models import Session
 from apps.telegram.decorator import sponsor_required
 from apps.telegram.handlers.base_handlers import BaseHandler
 from apps.telegram.telegram import Telegram
 from apps.telegram.telegram_models import Update
 from utils.utils import update_object
-from apps.account.models import User
 
 
 class AdminMessageHandler(BaseHandler):
@@ -20,6 +20,7 @@ class AdminMessageHandler(BaseHandler):
             "get_title": self.get_title,
             "get_episode": self.get_episode,
             "admin_user_info": self.admin_user_info,
+            "admin_edit_session": self.admin_edit_session,
         }
 
     def admin_handler(self):
@@ -76,6 +77,40 @@ class AdminMessageHandler(BaseHandler):
                 parse_mode="markdown"
             )
 
+        elif self.update.message.text == "ویرایش ⚙️":
+            update_object(self.user_obj, step="admin_edit_session")
+            return self.bot.send_message(
+                chat_id=self.chat_id,
+                text="لطفا لینک سشن را ارسال کنید",
+                # text=self.bot_messages.get_message("payment_plan_message"),
+                reply_markup=self.reply_keyboard.back_keyboard(),
+                parse_mode="markdown"
+            )
+
+    def admin_edit_session(self):
+        if self.update.message.text == "بازگشت":
+            return self.admin_handler()
+        _, link = self.text.split("=")
+        try:
+            session = Session.objects.get(link=link)
+        except Exception as e:
+            print(e)
+            return
+        _type = "سریال" if session.content_type == "series" else "فیلم"
+        msg = (
+            "📌 *اطلاعات سشن*\n\n"
+            f"🎬 *اسم سشن:* `{session.title}`\n"
+            f"📺 *تعداد قسمت‌ها:* `{session.episodes.count()}`\n"
+            f"📂 *نوع:* `{_type}`\n"
+        )
+        return self.bot.send_message(
+            chat_id=self.chat_id,
+            text=msg,
+            # text=self.bot_messages.get_message("payment_plan_message"),
+            reply_markup=self.inline_keyboard.edit_session_keyboard(session),
+            parse_mode="markdown"
+        )
+
     def admin_upload(self):
         if self.update.message.text == "بازگشت":
             return self.admin_handler()
@@ -128,7 +163,7 @@ class AdminMessageHandler(BaseHandler):
     def get_episode(self):
         _, session_id = self.user_obj.step.split(":")
         if self.update.message.text == "لغو اپلود ❌":
-            Session.objects.get(id=session_id).delete()
+            # Session.objects.get(id=session_id).delete()
             update_object(self.user_obj, step="admin_upload")
             return self.bot.send_message(
                 chat_id=self.chat_id,
@@ -141,18 +176,22 @@ class AdminMessageHandler(BaseHandler):
         elif self.update.message.text == "اتمام اپلود ✅":
             update_object(self.user_obj, step="admin_home")
             session = Session.objects.get(id=session_id)
+
             epis = ""
             for e in session.episodes.order_by("order"):
-                epis+=f"[E{e.order}]({e.get_link()})\n"
+                epis += f"🎬 [قسمت {e.order}]({e.get_link()})\n"
+
             text = (
-                f"✅ آپلود با موفقیت انجام شد!\n\n"
-                f"📌 لینک قسمت‌ها:\n{epis}\n"
-                f"📂 لینک کل مجموعه:\n[S{session.title}]({session.get_link()})"
+                "✨ *آپلود با موفقیت تکمیل شد!* ✨\n\n"
+                "📌 *لینک قسمت‌ها:*\n"
+                f"{epis}\n"
+                "📂 *لینک کل مجموعه:*\n"
+                f"🎞️ [ {session.title} ]({session.get_link()})"
             )
+
             return self.bot.send_message(
                 chat_id=self.chat_id,
                 text=text,
-                # text=self.bot_messages.get_message("payment_plan_message"),
                 reply_markup=self.reply_keyboard.admin_home_keyboard(),
                 parse_mode="markdown"
             )
